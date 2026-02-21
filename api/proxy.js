@@ -4,12 +4,18 @@ export const config = {
 
 export default async function handler(req) {
   const url = new URL(req.url);
-  
-  // Google API эндпоинт
+
+  // 1. Извлекаем параметры поиска (query params)
+  const searchParams = url.searchParams;
+
+  // 2. УДАЛЯЕМ параметр 'path', который Vercel добавляет принудительно
+  searchParams.delete('path');
+
+  // 3. Формируем чистый путь для Google
+  // Берем оригинальный pathname (например, /v1beta/models/...) и добавляем очищенные параметры
   const targetUrl = 'https://generativelanguage.googleapis.com' + url.pathname + url.search;
 
   const modifiedHeaders = new Headers(req.headers);
-  // Удаляем заголовок хоста, чтобы Google не отклонил запрос
   modifiedHeaders.delete('host');
 
   try {
@@ -20,9 +26,12 @@ export default async function handler(req) {
       duplex: 'half',
     });
 
+    // Копируем заголовки ответа, чтобы сохранить стриминг и кодировку
+    const responseHeaders = new Headers(response.headers);
+
     return new Response(response.body, {
       status: response.status,
-      headers: response.headers,
+      headers: responseHeaders,
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
